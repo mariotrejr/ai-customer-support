@@ -1,95 +1,110 @@
-import Image from "next/image";
-import styles from "./page.module.css";
+"use client";
+import { Box, TextField, Button, CircularProgress, Typography } from "@mui/material";
+import { useState, useEffect, useRef } from "react";
 
 export default function Home() {
+  const [messages, setMessages] = useState([
+    { role: "assistant", content: "Hello, how can I help you today?" }
+  ]);
+  const [inputValue, setInputValue] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const chatEndRef = useRef(null);
+
+  const handleSend = async () => {
+    if (inputValue.trim()) {
+      const newMessage = { role: "user", content: inputValue };
+      const updatedMessages = [...messages, newMessage];
+      setMessages(updatedMessages);
+      setInputValue("");
+      setLoading(true);
+      setError("");
+
+      try {
+        const response = await fetch("/api/chat", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify(updatedMessages)
+        });
+
+        if (!response.ok) {
+          throw new Error("Network response was not ok");
+        }
+
+        const data = await response.json();
+        setMessages((prevMessages) => [
+          ...prevMessages,
+          { role: "assistant", content: data.message.content }
+        ]);
+      } catch (error) {
+        console.error("Error:", error);
+        setError("There was an error sending your message. Please try again.");
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
   return (
-    <main className={styles.main}>
-      <div className={styles.description}>
-        <p>
-          Get started by editing&nbsp;
-          <code className={styles.code}>app/page.js</code>
-        </p>
-        <div>
-          <a
-            href="https://vercel.com?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+    <Box sx={{ padding: "20px", backgroundColor: "#ffffff", minHeight: "100vh" }}>
+      <Box sx={{ maxHeight: "70vh", overflowY: "auto", marginBottom: "20px" }}>
+        {messages.map((message, index) => (
+          <Box
+            key={index}
+            sx={{
+              display: "flex",
+              justifyContent:
+                message.role === "assistant" ? "flex-start" : "flex-end",
+              marginBottom: "10px"
+            }}
           >
-            By{" "}
-            <Image
-              src="/vercel.svg"
-              alt="Vercel Logo"
-              className={styles.vercelLogo}
-              width={100}
-              height={24}
-              priority
-            />
-          </a>
-        </div>
-      </div>
-
-      <div className={styles.center}>
-        <Image
-          className={styles.logo}
-          src="/next.svg"
-          alt="Next.js Logo"
-          width={180}
-          height={37}
-          priority
+            <Box sx={{ maxWidth: "50%" }}>
+              <Box
+                sx={{
+                  borderRadius: "10px",
+                  padding: "10px",
+                  backgroundColor:
+                    message.role === "assistant" ? "#f0f0f0" : "#007bff",
+                  color: message.role === "assistant" ? "#000" : "#fff"
+                }}
+              >
+                {message.content}
+              </Box>
+            </Box>
+          </Box>
+        ))}
+        <div ref={chatEndRef} />
+      </Box>
+      {error && (
+        <Typography color="error" sx={{ marginBottom: "10px" }}>
+          {error}
+        </Typography>
+      )}
+      <Box sx={{ display: "flex" }}>
+        <TextField
+          fullWidth
+          variant="outlined"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          placeholder="Type your message here..."
+          disabled={loading}
         />
-      </div>
-
-      <div className={styles.grid}>
-        <a
-          href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleSend}
+          sx={{ marginLeft: "10px" }}
+          disabled={loading}
         >
-          <h2>
-            Docs <span>-&gt;</span>
-          </h2>
-          <p>Find in-depth information about Next.js features and API.</p>
-        </a>
-
-        <a
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Learn <span>-&gt;</span>
-          </h2>
-          <p>Learn about Next.js in an interactive course with&nbsp;quizzes!</p>
-        </a>
-
-        <a
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Templates <span>-&gt;</span>
-          </h2>
-          <p>Explore starter templates for Next.js.</p>
-        </a>
-
-        <a
-          href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template&utm_campaign=create-next-app"
-          className={styles.card}
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <h2>
-            Deploy <span>-&gt;</span>
-          </h2>
-          <p>
-            Instantly deploy your Next.js site to a shareable URL with Vercel.
-          </p>
-        </a>
-      </div>
-    </main>
+          {loading ? <CircularProgress size={24} /> : "Send"}
+        </Button>
+      </Box>
+    </Box>
   );
 }
