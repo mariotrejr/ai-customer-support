@@ -1,10 +1,10 @@
 "use client";
 import { Box, TextField, Button, CircularProgress, Typography } from "@mui/material";
-import { useState, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 
 export default function Home() {
   const [messages, setMessages] = useState([
-    { role: "assistant", content: "Hello, how can I help you today?" }
+    { role: "Support AI", content: "Hi, Welcome to Stream Fiesta, how can I help you today?" }
   ]);
   const [inputValue, setInputValue] = useState("");
   const [loading, setLoading] = useState(false);
@@ -13,13 +13,44 @@ export default function Home() {
 
   const handleSend = async () => {
     if (inputValue.trim()) {
-      const newMessage = { role: "user", content: inputValue };
-      const updatedMessages = [...messages, newMessage];
-      setMessages(updatedMessages);
-      setInputValue("");
-      chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+        const newMessage = { role: "user", content: inputValue };
+        const updatedMessages = [...messages, newMessage];
+        setMessages(updatedMessages);
+        setInputValue("");
+        setLoading(true);
+        setError("");
+
+        try {
+            // Send the user's input in the required format { user: user response }
+            const response = await fetch("/api/chat", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify([{ role: "user", content: inputValue }])
+            });
+
+            if (!response.ok) {
+                throw new Error("Network response was not ok");
+            }
+
+            const data = await response.json();
+            setMessages((prevMessages) => [
+                ...prevMessages,
+                { role: "assistant", content: data.message.content }
+            ]);
+        } catch (error) {
+            console.error("Error:", error);
+            setError("There was an error sending your message. Please try again.");
+        } finally {
+            setLoading(false);
+        }
     }
-  };
+};
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
 
   return (
     <Box
@@ -152,6 +183,3 @@ export default function Home() {
     </Box>
   );
 }
-
-
-
